@@ -11,7 +11,7 @@ Install the following nuget packages (check the "include prerelease" box):
 Add the following code:
 
 ```csharp
-using (var image = Image.Load("path/to/image.jpg"))
+using (var image = Image.Load(@"path\to\image.jpg"))
 {
     // find best crop
     var result = new ImageCrop(200, 200).Crop(image);
