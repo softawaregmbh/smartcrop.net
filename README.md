@@ -1,2 +1,3 @@
-# smartcrop.net
-A .NET Standard implementation of smartcrop.js for content aware image cropping
+# Smartcrop.net
+
+This is a .NET Standard port of Jonas Wagner's [smartcrop.js](https://github.com/jwagner/smartcrop.js) content aware image cropping library. 
