@@ -245,7 +245,7 @@ namespace Smartcrop
             float Saturation(Rgba32 pixel)
             {
                 var maximum = Math.Max(pixel.R / 255f, Math.Max(pixel.G / 255f, pixel.B / 255f));
-                var minumum = Math.Min(pixel.R / 255f, Math.Max(pixel.G / 255f, pixel.B / 255f));
+                var minumum = Math.Min(pixel.R / 255f, Math.Min(pixel.G / 255f, pixel.B / 255f));
 
                 if (maximum == minumum)
                 {
