@@ -8,6 +8,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats;
 using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
@@ -19,6 +20,7 @@ namespace Smartcrop.Sample.Wpf
         public event PropertyChangedEventHandler PropertyChanged;
 
         private readonly Func<string> fileSelector;
+        private readonly IImageEncoder encoder = new JpegEncoder() { Quality = 100 };
 
         private int cropWidth = 100;
         private int cropHeight = 100;
@@ -63,7 +65,7 @@ namespace Smartcrop.Sample.Wpf
 
                 // load the source image
                 using (var image = Image.Load(this.SourceImagePath))
-                {
+                {   
                     // calculate the best crop area
                     var result = crop.Crop(image);
 
@@ -87,7 +89,7 @@ namespace Smartcrop.Sample.Wpf
         {
             using (var stream = new MemoryStream())
             {
-                image.Save(stream, new JpegEncoder());
+                image.Save(stream, this.encoder);
                 stream.Seek(0, SeekOrigin.Begin);
 
                 var imageSource = new BitmapImage();

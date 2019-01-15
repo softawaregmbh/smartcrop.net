@@ -207,9 +207,9 @@ namespace Smartcrop
             float SkinColor(Rgba32 pixel)
             {
                 var mag = (float)Math.Sqrt(pixel.R * pixel.R + pixel.G * pixel.G + pixel.B * pixel.B);
-                var rd = pixel.R / mag - this.Options.SkinColor.R;
-                var gd = pixel.G / mag - this.Options.SkinColor.G;
-                var bd = pixel.B / mag - this.Options.SkinColor.B;
+                var rd = pixel.R / mag - (this.Options.SkinColor.R / 255f);
+                var gd = pixel.G / mag - (this.Options.SkinColor.G / 255f);
+                var bd = pixel.B / mag - (this.Options.SkinColor.B / 255f);
                 var d = (float)Math.Sqrt(rd * rd + gd * gd + bd * bd);
                 return 1f - d;
             }
@@ -218,15 +218,14 @@ namespace Smartcrop
             {
                 for (var x = 0; x < input.Width; x++)
                 {
-                    var pixel = input[x, y];
                     var lightness = this.Cie(input[x, y]) / 255f;
-                    var skin = SkinColor(pixel);
+                    var skin = SkinColor(input[x, y]);
                     var isSkinColor = skin > this.Options.SkinThreshold;
                     var isSkinBrightness =
                         lightness >= this.Options.SkinBrightnessMin &&
                         lightness <= this.Options.SkinBrightnessMax;
 
-                    pixel = output[x, y];
+                    var pixel = output[x, y];
                     if (isSkinColor && isSkinBrightness)
                     {
                         pixel.R = (byte)Math.Min(byte.MaxValue, (skin - this.Options.SkinThreshold) * (255f / (1f - this.Options.SkinThreshold)));
