@@ -9,11 +9,12 @@
     <Description>A .NET Standard port of smartcrop.js for content aware image cropping.</Description>
     <PackageLicenseUrl>https://github.com/softawaregmbh/smartcrop.net/blob/master/LICENSE</PackageLicenseUrl>
     <PackageProjectUrl>https://github.com/softawaregmbh/smartcrop.net</PackageProjectUrl>
-    <PackageIconUrl></PackageIconUrl>
+    <PackageIconUrl>https://raw.githubusercontent.com/softawaregmbh/smartcrop.net/master/icon.png</PackageIconUrl>
     <RepositoryUrl>https://github.com/softawaregmbh/smartcrop.net</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>softaware smart image crop smartcrop</PackageTags>
     <Company>softaware gmbh</Company>
+    <Version>1.0.0-beta</Version>
   </PropertyGroup>
 
   <ItemGroup>
