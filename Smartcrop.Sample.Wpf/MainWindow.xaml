@@ -85,12 +85,14 @@
                Margin="10"
                Source="{Binding DebugImage, TargetNullValue={x:Null}}"/>
 
-        <Image Grid.Row="2"
-               Grid.Column="2"
-               Margin="10"
-               Source="{Binding CroppedImage, TargetNullValue={x:Null}}"
-               Width="{Binding CropWidth}"
-               Height="{Binding CropHeight}"/>
+        <Viewbox Grid.Row="2"
+                 Grid.Column="2"
+                 Margin="10"
+                 StretchDirection="DownOnly">
+            <Image Source="{Binding CroppedImage, TargetNullValue={x:Null}}"
+                   Width="{Binding CropWidth}"
+                   Height="{Binding CropHeight}"/>
+        </Viewbox>
 
         <Grid Grid.Row="3" HorizontalAlignment="Center">
             <Grid.RowDefinitions>
