@@ -1,17 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats;
-using SixLabors.ImageSharp.Formats.Jpeg;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
+using SkiaSharp;
 
 namespace Smartcrop.Sample.Wpf
 {
@@ -20,7 +17,6 @@ namespace Smartcrop.Sample.Wpf
         public event PropertyChangedEventHandler PropertyChanged;
 
         private readonly Func<string> fileSelector;
-        private readonly IImageEncoder encoder = new JpegEncoder() { Quality = 100 };
 
         private int cropWidth = 100;
         private int cropHeight = 100;
@@ -63,21 +59,36 @@ namespace Smartcrop.Sample.Wpf
 
                 var crop = new ImageCrop(options);
 
+                var watch = Stopwatch.StartNew();
                 // load the source image
-                using (var image = Image.Load(this.SourceImagePath))
-                {   
+                using (var bitmap = SKBitmap.Decode(this.SourceImagePath))
+                {
                     // calculate the best crop area
-                    var result = crop.Crop(image);
+                    var result = crop.Crop(bitmap);
+                    watch.Stop();
 
                     this.DebugImage = this.CreateImageSource(result.DebugInfo.Output);
 
+                    watch.Start();
                     // crop the image
-                    image.Mutate(o => o.Crop(result.Area));
+                    //using (var image = SKBitmap.Decode(stream))
+                    {
+                        SKRect cropRect = new SKRect(result.Area.Left, result.Area.Top, result.Area.Right, result.Area.Bottom);
+                        using (SKBitmap croppedBitmap = new SKBitmap((int)cropRect.Width, (int)cropRect.Height))
+                        using (SKCanvas canvas = new SKCanvas(croppedBitmap))
+                        {
+                            SKRect source = new SKRect(cropRect.Left, cropRect.Top,
+                                                   cropRect.Right, cropRect.Bottom);
+                            SKRect dest = new SKRect(0, 0, cropRect.Width, cropRect.Height);
+                            canvas.DrawBitmap(bitmap, source, dest);
+                            watch.Stop();
 
-                    this.CroppedImage = this.CreateImageSource(image);
+                            this.CroppedImage = this.CreateImageSource(croppedBitmap);
+                        };
+                    }
                 }
 
-                this.ErrorText = null;
+                this.ErrorText = $"Cropping took {watch.ElapsedMilliseconds} ms";
             }
             catch (Exception e)
             {
@@ -85,11 +96,12 @@ namespace Smartcrop.Sample.Wpf
             }
         }
 
-        private ImageSource CreateImageSource(Image<Rgba32> image)
+        private ImageSource CreateImageSource(SKBitmap bitmap)
         {
+            using (var image = SKImage.FromBitmap(bitmap))
             using (var stream = new MemoryStream())
             {
-                image.Save(stream, this.encoder);
+                image.Encode().SaveTo(stream);
                 stream.Seek(0, SeekOrigin.Begin);
 
                 var imageSource = new BitmapImage();

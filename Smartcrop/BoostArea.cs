@@ -1,6 +1,4 @@
-﻿using SixLabors.Primitives;
-
-namespace Smartcrop
+﻿namespace Smartcrop
 {
     public class BoostArea
     {

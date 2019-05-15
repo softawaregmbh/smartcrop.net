@@ -1,14 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
-using SixLabors.Primitives;
+using System.Runtime.CompilerServices;
+using SkiaSharp;
 
 namespace Smartcrop
 {
-    public class ImageCrop
+    public unsafe class ImageCrop
     {
         private Options options;
 
@@ -28,141 +28,147 @@ namespace Smartcrop
             set => this.options = value ?? throw new ArgumentNullException(nameof(value));
         }
 
-        public Result Crop(Image<Rgba32> image, params BoostArea[] boostAreas)
+        public Result Crop(SKBitmap image, params BoostArea[] boostAreas)
         {
-            Image<Rgba32> clone = null;
-
-            try
+            //using (var image = SKBitmap.Decode(stream))
             {
-                if (this.Options.Aspect > 0)
+                SKBitmap resizedImage = null;
+
+                try
                 {
-                    this.Options.Width = this.Options.Aspect;
-                    this.Options.Height = 1;
-                }
-
-                var scale = 1f;
-                var prescale = 1f;
-
-                if (this.Options.Width > 0 && this.Options.Height > 0)
-                {
-                    scale = Math.Min(
-                        image.Width / (float)this.Options.Width,
-                        image.Height / (float)this.Options.Height
-                    );
-                    this.Options.CropWidth = (int)Math.Round(this.Options.Width * scale);
-                    this.Options.CropHeight = (int)Math.Round(this.Options.Height * scale);
-
-                    // Img = 100x100; width = 95x95; scale = 100/95; 1/scale > min
-                    // don't set minScale smaller than 1/scale
-                    // -> don't pick crops that need upscaling
-                    this.Options.MinScale = Math.Min(
-                        this.Options.MaxScale,
-                        Math.Max(1.0f / scale, this.Options.MinScale)
-                    );
-
-                    // prescale if possible
-                    if (this.Options.Prescale)
+                    if (this.Options.Aspect > 0)
                     {
-                        prescale = Math.Min(Math.Max(256f / image.Width, 256f / image.Height), 1);
-                        if (prescale < 1)
+                        this.Options.Width = this.Options.Aspect;
+                        this.Options.Height = 1;
+                    }
+
+                    var scale = 1f;
+                    var prescale = 1f;
+
+                    if (this.Options.Width > 0 && this.Options.Height > 0)
+                    {
+                        scale = Math.Min(
+                            image.Width / (float)this.Options.Width,
+                            image.Height / (float)this.Options.Height
+                        );
+                        this.Options.CropWidth = (int)Math.Round(this.Options.Width * scale);
+                        this.Options.CropHeight = (int)Math.Round(this.Options.Height * scale);
+
+                        // Img = 100x100; width = 95x95; scale = 100/95; 1/scale > min
+                        // don't set minScale smaller than 1/scale
+                        // -> don't pick crops that need upscaling
+                        this.Options.MinScale = Math.Min(
+                            this.Options.MaxScale,
+                            Math.Max(1.0f / scale, this.Options.MinScale)
+                        );
+
+                        // prescale if possible
+                        if (this.Options.Prescale)
                         {
-                            image = clone = image.Clone();
-                            image.Mutate(o => o.Resize((int)Math.Round(image.Width * prescale), (int)Math.Round(image.Height * prescale)));
-
-                            this.Options.CropWidth = (int)Math.Round(this.Options.CropWidth.Value * (double)prescale);
-                            this.Options.CropHeight = (int)Math.Round(this.Options.CropHeight.Value * (double)prescale);
-
-                            for (int i = 0; i < boostAreas.Length; i++)
+                            prescale = Math.Min(Math.Max(256f / image.Width, 256f / image.Height), 1);
+                            if (prescale < 1)
                             {
-                                var area = boostAreas[i].Area;
-                                boostAreas[i].Area =
-                                    new Rectangle(
-                                        area.X = (int)Math.Round(area.X * prescale),
-                                        area.Y = (int)Math.Round(area.Y * prescale),
-                                        area.Width = (int)Math.Round(area.Width * prescale),
-                                        area.Height = (int)Math.Round(area.Height * prescale));
+                                resizedImage = image.Resize(new SKImageInfo((int)Math.Round(image.Width * prescale), (int)Math.Round(image.Height * prescale)), SKFilterQuality.Medium);
+
+                                this.Options.CropWidth = (int)Math.Round(this.Options.CropWidth.Value * (double)prescale);
+                                this.Options.CropHeight = (int)Math.Round(this.Options.CropHeight.Value * (double)prescale);
+
+                                for (int i = 0; i < boostAreas.Length; i++)
+                                {
+                                    var area = boostAreas[i].Area;
+                                    boostAreas[i].Area =
+                                        new Rectangle(
+                                            (int)Math.Round(area.X * prescale),
+                                            (int)Math.Round(area.Y * prescale),
+                                            (int)Math.Round(area.Width * prescale),
+                                            (int)Math.Round(area.Height * prescale));
+                                }
+                            }
+                            else
+                            {
+                                prescale = 1;
                             }
                         }
-                        else
-                        {
-                            prescale = 1;
-                        }
                     }
-                }
 
-                var result = this.Analyze(image, boostAreas);
+                    var result = this.Analyze(resizedImage ?? image, boostAreas);
 
-                if (this.Options.Prescale)
-                {
-                    result.Area = new Rectangle(
-                    (int)Math.Round(result.Area.X / prescale),
-                    (int)Math.Round(result.Area.Y / prescale),
-                    (int)Math.Round(result.Area.Width / prescale),
-                    (int)Math.Round(result.Area.Height / prescale));
-
-                    if (this.Options.Debug)
+                    if (this.Options.Prescale)
                     {
-                        foreach (var crop in result.DebugInfo.Crops)
+                        result.Area = new Rectangle(
+                        (int)Math.Round(result.Area.X / prescale),
+                        (int)Math.Round(result.Area.Y / prescale),
+                        (int)Math.Round(result.Area.Width / prescale),
+                        (int)Math.Round(result.Area.Height / prescale));
+
+                        if (this.Options.Debug)
                         {
-                            crop.Area = new Rectangle(
-                                (int)Math.Round(crop.Area.X / prescale),
-                                (int)Math.Round(crop.Area.Y / prescale),
-                                (int)Math.Round(crop.Area.Width / prescale),
-                                (int)Math.Round(crop.Area.Height / prescale));
+                            foreach (var crop in result.DebugInfo.Crops)
+                            {
+                                crop.Area = new Rectangle(
+                                    (int)Math.Round(crop.Area.X / prescale),
+                                    (int)Math.Round(crop.Area.Y / prescale),
+                                    (int)Math.Round(crop.Area.Width / prescale),
+                                    (int)Math.Round(crop.Area.Height / prescale));
+                            }
                         }
                     }
-                }
 
-                return result;
-            }
-            finally
-            {
-                clone?.Dispose();
+                    return result;
+                }
+                finally
+                {
+                    resizedImage?.Dispose();
+                }
             }
         }
 
-        private Result Analyze(Image<Rgba32> input, params BoostArea[] boostAreas)
+        private Result Analyze(SKBitmap input, params BoostArea[] boostAreas)
         {
-            var output = new Image<Rgba32>(input.Width, input.Height);
+            var output = new SKBitmap(input.Width, input.Height, true);
+
+            byte* inputPtr = (byte*)input.GetPixels().ToPointer();
+            byte* outputPtr = (byte*)output.GetPixels().ToPointer();
 
             try
             {
                 var result = new Result();
 
-                this.EdgeDetect(input, output);
-                this.SkinDetect(input, output);
-                this.SaturationDetect(input, output);
-                this.ApplyBoosts(output, boostAreas);
+                this.EdgeDetect(inputPtr, outputPtr, input.Width, input.Height);
+                this.SkinDetect(inputPtr, outputPtr, input.Width, input.Height);
+                this.SaturationDetect(inputPtr, outputPtr, input.Width, input.Height);
+                this.ApplyBoosts(outputPtr, output.Width, output.Height, boostAreas);
 
-                var scoreOutput = this.DownSample(output);
-
-                var topScore = double.MinValue;
-                var crops = this.GenerateCrops(input.Width, input.Height);
-
-                foreach (var crop in crops)
+                using (var scoreOutput = this.DownSample(outputPtr, output.Width, output.Height))
                 {
-                    crop.Score = this.Score(scoreOutput, crop.Area, boostAreas);
-                    if (crop.Score.Total > topScore)
+                    var topScore = double.MinValue;
+                    var crops = this.GenerateCrops(input.Width, input.Height);
+
+                    foreach (var crop in crops)
                     {
-                        result.Area = crop.Area;
-                        topScore = crop.Score.Total;
+                        crop.Score = this.Score(scoreOutput, crop.Area, boostAreas);
+                        if (crop.Score.Total > topScore)
+                        {
+                            result.Area = crop.Area;
+                            topScore = crop.Score.Total;
+                        }
                     }
-                }
 
-                if (this.Options.Debug)
-                {
-                    result.DebugInfo = new DebugInfo()
+                    if (this.Options.Debug)
                     {
-                        Crops = crops,
-                        Output = output,
-                        Options = this.Options
-                    };
+                        result.DebugInfo = new DebugInfo()
+                        {
+                            Crops = crops,
+                            Output = output,
+                            Options = this.Options
+                        };
 
-                    // don't dispose output in this case
-                    output = null;
+                        // don't dispose output in this case
+                        output = null;
+                    }
+
+                    return result;
                 }
-
-                return result;
             }
             finally
             {
@@ -170,10 +176,20 @@ namespace Smartcrop
             }
         }
 
-        private void EdgeDetect(Image<Rgba32> input, Image<Rgba32> output)
+        private void Save(SKBitmap bitmap)
         {
-            var w = input.Width;
-            var h = input.Height;
+            using (var image = SKImage.FromBitmap(bitmap))
+            using (var data = image.Encode())
+            using (var stream = File.OpenWrite("debug.png"))
+            {
+                data.SaveTo(stream);
+            }
+        }
+
+        private void EdgeDetect(byte* input, byte* output, int width, int height)
+        {
+            var w = width;
+            var h = height;
 
             for (var y = 0; y < h; y++)
             {
@@ -181,71 +197,87 @@ namespace Smartcrop
                 {
                     float lightness;
 
+                    byte r = *(output + 2);
+
                     if (x == 0 || x >= w - 1 || y == 0 || y >= h - 1)
                     {
-                        lightness = this.Sample(input, x, y);
+                        lightness = this.Sample(input);
                     }
                     else
                     {
                         lightness =
-                            this.Sample(input, x, y) * 4 -
-                            this.Sample(input, x, y - 1) -
-                            this.Sample(input, x - 1, y) -
-                            this.Sample(input, x + 1, y) -
-                            this.Sample(input, x, y + 1);
+                            this.Sample(input) * 4 -           // pixel * 4
+                            this.Sample(input - (width * 4)) - // above
+                            this.Sample(input - 4) -           // left
+                            this.Sample(input + 4) -           // right
+                            this.Sample(input + (width * 4));  // below
                     }
 
-                    var pixel = output[x, y];
-                    pixel.G = (byte)Math.Min(byte.MaxValue, Math.Max(0, Math.Round(lightness)));
-                    output[x, y] = pixel;
+                    *(output + 1) = (byte)Math.Min(byte.MaxValue, Math.Max(0, Math.Round(lightness))); //green
+
+                    byte r2 = *(output + 2);
+                    if (r != r2)
+                    {
+                        Debugger.Break();
+                    }
+
+                    input += 4;
+                    output += 4;
                 }
             }
         }
 
-        private void SkinDetect(Image<Rgba32> input, Image<Rgba32> output)
+        private void SkinDetect(byte* input, byte* output, int width, int height)
         {
-            float SkinColor(Rgba32 pixel)
+            float SkinColor(byte* pixel)
             {
-                var mag = (float)Math.Sqrt(pixel.R * pixel.R + pixel.G * pixel.G + pixel.B * pixel.B);
-                var rd = pixel.R / mag - (this.Options.SkinColor.R / 255f);
-                var gd = pixel.G / mag - (this.Options.SkinColor.G / 255f);
-                var bd = pixel.B / mag - (this.Options.SkinColor.B / 255f);
+                var blue = *pixel;
+                var green = *(pixel + 1);
+                var red = *(pixel + 2);
+                var mag = (float)Math.Sqrt(red * red + green * green + blue * blue);
+                var rd = red / mag - this.Options.SkinColor.red;
+                var gd = green / mag - this.Options.SkinColor.green;
+                var bd = blue / mag - this.Options.SkinColor.blue;
                 var d = (float)Math.Sqrt(rd * rd + gd * gd + bd * bd);
                 return 1f - d;
             }
 
-            for (var y = 0; y < input.Height; y++)
+            for (var y = 0; y < height; y++)
             {
-                for (var x = 0; x < input.Width; x++)
+                for (var x = 0; x < width; x++)
                 {
-                    var lightness = this.Cie(input[x, y]) / 255f;
-                    var skin = SkinColor(input[x, y]);
+                    var lightness = this.Cie(input) / 255f;
+                    var skin = SkinColor(input);
                     var isSkinColor = skin > this.Options.SkinThreshold;
                     var isSkinBrightness =
                         lightness >= this.Options.SkinBrightnessMin &&
                         lightness <= this.Options.SkinBrightnessMax;
 
-                    var pixel = output[x, y];
                     if (isSkinColor && isSkinBrightness)
                     {
-                        pixel.R = (byte)Math.Min(byte.MaxValue, (skin - this.Options.SkinThreshold) * (255f / (1f - this.Options.SkinThreshold)));
+                        *(output + 2) = (byte)Math.Min(byte.MaxValue, (skin - this.Options.SkinThreshold) * (255f / (1f - this.Options.SkinThreshold))); // red
                     }
                     else
                     {
-                        pixel.R = 0;
+                        *(output + 2) = 0; // red
                     }
 
-                    output[x, y] = pixel;
+                    input += 4;
+                    output += 4;
                 }
             }
         }
 
-        private void SaturationDetect(Image<Rgba32> input, Image<Rgba32> output)
+        private void SaturationDetect(byte* input, byte* output, int width, int height)
         {
-            float Saturation(Rgba32 pixel)
+            float Saturation(byte* pixel)
             {
-                var maximum = Math.Max(pixel.R / 255f, Math.Max(pixel.G / 255f, pixel.B / 255f));
-                var minumum = Math.Min(pixel.R / 255f, Math.Min(pixel.G / 255f, pixel.B / 255f));
+                var blue = *pixel;
+                var green = *(pixel + 1);
+                var red = *(pixel + 2);
+
+                var maximum = Math.Max(red / 255f, Math.Max(green / 255f, blue / 255f));
+                var minumum = Math.Min(red / 255f, Math.Min(green / 255f, blue / 255f));
 
                 if (maximum == minumum)
                 {
@@ -258,28 +290,29 @@ namespace Smartcrop
                 return l > 0.5f ? d / (2 - maximum - minumum) : d / (maximum + minumum);
             }
 
-            for (var y = 0; y < input.Height; y++)
+            for (var y = 0; y < height; y++)
             {
-                for (var x = 0; x < input.Width; x++)
+                for (var x = 0; x < width; x++)
                 {
-                    var lightness = this.Cie(input[x, y]) / 255f;
-                    var sat = Saturation(input[x, y]);
+                    var lightness = this.Cie(input) / 255f;
+                    var sat = Saturation(input);
 
                     var acceptableSaturation = sat > this.Options.SaturationThreshold;
                     var acceptableLightness =
                         lightness >= this.Options.SaturationBrightnessMin &&
                         lightness <= this.Options.SaturationBrightnessMax;
 
-                    var pixel = output[x, y];
                     if (acceptableLightness && acceptableSaturation)
                     {
-                        pixel.B = (byte)Math.Min(byte.MaxValue, (sat - this.Options.SaturationThreshold) * (255f / (1f - this.Options.SaturationThreshold)));
+                        *output = (byte)Math.Min(byte.MaxValue, (sat - this.Options.SaturationThreshold) * (255f / (1f - this.Options.SaturationThreshold))); // blue
                     }
                     else
                     {
-                        pixel.B = 0;
+                        *output = 0; //blue
                     }
-                    output[x, y] = pixel;
+
+                    input += 4;
+                    output += 4;
                 }
             }
         }
@@ -288,14 +321,17 @@ namespace Smartcrop
         /// The DownSample method divides the input image to (factor x factor) sized areas and reduces each of them to one pixel in the output image.
         /// Because not every image can be divided by (factor), the last pixels on the right and the bottom might not be included in the calculation.
         /// </summary>
-        private Image<Rgba32> DownSample(Image<Rgba32> input)
+        private SKBitmap DownSample(byte* input, int inputWidth, int inputHeight)
         {
             int factor = this.Options.ScoreDownSample;
 
             // Math.Floor instead of Math.Round to avoid a (factor + 1)th area on the right/bottom
-            var width = (int)Math.Floor(input.Width / (float)factor);
-            var height = (int)Math.Floor(input.Height / (float)factor);
-            var output = new Image<Rgba32>(width, height);
+            var width = (int)Math.Floor(inputWidth / (float)factor);
+            var height = (int)Math.Floor(inputHeight / (float)factor);
+            var output = new SKBitmap(width, height);
+
+            byte* outputPtr = (byte*)output.GetPixels().ToPointer();
+
             var ifactor2 = 1f / (factor * factor);
 
             for (var y = 0; y < height; y++)
@@ -314,52 +350,53 @@ namespace Smartcrop
                     {
                         for (var u = 0; u < factor; u++)
                         {
-                            var j = (y * factor + v) * input.Width + (x * factor + u);
-                            
-                            var argb = input[j % input.Width, j / input.Width];
-                            r += argb.R;
-                            g += argb.G;
-                            b += argb.B;
-                            a += argb.A;
-                            mr = Math.Max(mr, argb.R);
-                            mg = Math.Max(mg, argb.G);
+                            var j = (y * factor + v) * inputWidth + (x * factor + u);
+
+                            var pixel = input + 4 * j;
+                            r += *(pixel + 2);
+                            g += *(pixel + 1);
+                            b += *pixel;
+                            a += *(pixel + 3);
+                            mr = Math.Max(mr, *(pixel + 2));
+                            mg = Math.Max(mg, *(pixel + 1));
                             // unused
-                            // mb = Math.Max(mb, argb.B);
+                            // mb = Math.Max(mb, *pixel);
                         }
                     }
                     // this is some funky magic to preserve detail a bit more for
                     // skin (r) and detail (g). Saturation (b) does not get this boost.
 
-                    output[x, y] = new Rgba32(
-                        (byte)(r * ifactor2 * 0.5f + mr * 0.5f),
-                        (byte)(g * ifactor2 * 0.7f + mg * 0.3f),
-                        (byte)(b * ifactor2),
-                        (byte)(a * ifactor2));
+                    *outputPtr++ = (byte)(b * ifactor2);
+                    *outputPtr++ = (byte)(g * ifactor2 * 0.7f + mg * 0.3f);
+                    *outputPtr++ = (byte)(r * ifactor2 * 0.5f + mr * 0.5f);
+                    *outputPtr++ = (byte)(a * ifactor2);
                 }
             }
 
             return output;
         }
 
-        private float Sample(Image<Rgba32> image, int x, int y)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private float Sample(byte* ptr)
         {
-            return this.Cie(image[x, y]);
+            return this.Cie(ptr);
         }
 
-        private float Cie(Rgba32 rgb)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private float Cie(byte* ptr)
         {
-            return 0.5126f * rgb.B + 0.7152f * rgb.G + 0.0722f * rgb.R;
+            return 0.5126f * *(ptr)      // blue
+                 + 0.7152f * *(ptr + 1)  // green
+                 + 0.0722f * *(ptr + 2); // red
         }
 
-        private void ApplyBoosts(Image<Rgba32> output, params BoostArea[] boostAreas)
+        private void ApplyBoosts(byte* output, int width, int height, params BoostArea[] boostAreas)
         {
-            for (int y = 0; y < output.Height; y++)
+            for (int y = 0; y < height; y++)
             {
-                for (int x = 0; x < output.Width; x++)
+                for (int x = 0; x < width; x++)
                 {
-                    var pixel = output[x, y];
-                    pixel.A = 0;
-                    output[x, y] = pixel;
+                    *(output + y * width + x * 4 + 3) = 0; //alpha
                 }
             }
 
@@ -374,9 +411,8 @@ namespace Smartcrop
                 {
                     for (var x = x0; x < x1; x++)
                     {
-                        var pixel = output[x, y];
-                        pixel.A = (byte)Math.Max(0, Math.Min(byte.MaxValue, pixel.A + weight));
-                        output[x, y] = pixel;
+                        var alphaPtr = output + y * width + x * 4 + 3;
+                        *alphaPtr = (byte)Math.Max(0, Math.Min(byte.MaxValue, *alphaPtr + weight)); //alpha
                     }
                 }
             }
@@ -403,7 +439,7 @@ namespace Smartcrop
             return results;
         }
 
-        private Score Score(Image<Rgba32> output, Rectangle crop, BoostArea[] boostAreas)
+        private Score Score(SKBitmap output, Rectangle crop, BoostArea[] boostAreas)
         {
             var result = new Score();
 
@@ -413,20 +449,21 @@ namespace Smartcrop
             var outputWidthDownSample = output.Width * downSample;
             var outputWidth = output.Width;
 
+            var ptr = (byte*)output.GetPixels().ToPointer();
+
             for (var y = 0; y < outputHeightDownSample; y += downSample)
             {
                 for (var x = 0; x < outputWidthDownSample; x += downSample)
                 {
-                    var p = ((int)(y * invDownSample)) * outputWidth + ((int)(x * invDownSample));
-                    var pixel = output[p % output.Width, p / output.Width];
+                    var pixel = ptr + (((int)(y * invDownSample)) * outputWidth + ((int)(x * invDownSample))) * 4;
 
                     var i = this.Importance(crop, x, y);
-                    var detail = pixel.G / 255f;
+                    var detail = *(pixel + 1) / 255f;
 
                     result.Detail += detail * i;
-                    result.Skin += pixel.R / 255f * (detail + this.Options.SkinBias) * i;
-                    result.Saturation += pixel.B / 255f * (detail + this.Options.SaturationBias) * i;
-                    result.Boost += pixel.A / 255f * i;
+                    result.Skin += *(pixel + 2) / 255f * (detail + this.Options.SkinBias) * i;
+                    result.Saturation += *pixel / 255f * (detail + this.Options.SaturationBias) * i;
+                    result.Boost += *(pixel + 3) / 255f * i;
                 }
             }
 
@@ -485,6 +522,7 @@ namespace Smartcrop
 
         // Gets value in the range of [0; 1] where 0 is the center of the pictures
         // returns weight of rule of thirds [0; 1]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private float Thirds(float x)
         {
             x = (((x - 1f / 3f + 1f) % 2f) * 0.5f - 0.5f) * 16;

@@ -1,6 +1,4 @@
-﻿using SixLabors.ImageSharp.PixelFormats;
-
-namespace Smartcrop
+﻿namespace Smartcrop
 {
     public class Options
     {
@@ -14,7 +12,7 @@ namespace Smartcrop
         public int Height = 0;
         public int Aspect = 0;
         public float DetailWeight = 0.2f;
-        public Rgba32 SkinColor = new Rgba32(0.78f, 0.57f, 0.44f);
+        public (float red, float green, float blue) SkinColor = (0.78f, 0.57f, 0.44f);
         public float SkinBias = 0.01f;
         public float SkinBrightnessMin = 0.2f;
         public float SkinBrightnessMax = 1.0f;
