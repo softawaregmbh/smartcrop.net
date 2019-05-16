@@ -232,15 +232,15 @@ namespace Smartcrop
 
         private void SkinDetect(byte* input, SKImageInfo inputInfo, byte* output, SKImageInfo outputInfo)
         {
-            float SkinColor(byte* pixel)
+            float SkinColor(byte* pixel, SKColorType colorType, (float red, float green, float blue) skinColor)
             {
-                var blue = *Blue(pixel, inputInfo.ColorType);
-                var green = *Green(pixel, inputInfo.ColorType);
-                var red = *Red(pixel, inputInfo.ColorType);
+                var blue = *Blue(pixel, colorType);
+                var green = *Green(pixel, colorType);
+                var red = *Red(pixel, colorType);
                 var mag = (float)Math.Sqrt(red * red + green * green + blue * blue);
-                var rd = red / mag - this.Options.SkinColor.red;
-                var gd = green / mag - this.Options.SkinColor.green;
-                var bd = blue / mag - this.Options.SkinColor.blue;
+                var rd = red / mag - skinColor.red;
+                var gd = green / mag - skinColor.green;
+                var bd = blue / mag - skinColor.blue;
                 var d = (float)Math.Sqrt(rd * rd + gd * gd + bd * bd);
                 return 1f - d;
             }
@@ -250,7 +250,7 @@ namespace Smartcrop
                 for (var x = 0; x < inputInfo.Width; x++)
                 {
                     var lightness = this.Cie(input, inputInfo.ColorType) / 255f;
-                    var skin = SkinColor(input);
+                    var skin = SkinColor(input, inputInfo.ColorType, this.options.SkinColor);
                     var isSkinColor = skin > this.Options.SkinThreshold;
                     var isSkinBrightness =
                         lightness >= this.Options.SkinBrightnessMin &&
@@ -359,11 +359,11 @@ namespace Smartcrop
                             r += *Red(pixel, info.ColorType);
                             g += *Green(pixel, info.ColorType);
                             b += *Blue(pixel, info.ColorType);
-                            a += *(pixel + 3);
-                            mr = Math.Max(mr, *(pixel + 2));
-                            mg = Math.Max(mg, *(pixel + 1));
+                            a += *Alpha(pixel, info.ColorType);
+                            mr = Math.Max(mr, *Red(pixel, info.ColorType));
+                            mg = Math.Max(mg, *Green(pixel, info.ColorType));
                             // unused
-                            // mb = Math.Max(mb, *pixel);
+                            // mb = Math.Max(mb, *Blue(pixel, info.ColorType));
                         }
                     }
                     // this is some funky magic to preserve detail a bit more for
@@ -390,19 +390,10 @@ namespace Smartcrop
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private float Cie(byte* ptr, SKColorType colorType)
         {
-            return 0.5126f * *Blue(ptr, colorType)  // blue
-                 + 0.7152f * *Green(ptr, colorType) // green
-                 + 0.0722f * *Red(ptr, colorType);  // red
+            return 0.5126f * *Blue(ptr, colorType)
+                 + 0.7152f * *Green(ptr, colorType)
+                 + 0.0722f * *Red(ptr, colorType);
         }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static byte* Red(byte* ptr, SKColorType colorType) => colorType == SKColorType.Rgba8888 ? ptr : ptr + 2;
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static byte* Green(byte* ptr, SKColorType colorType) => ptr + 1;
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static byte* Blue(byte* ptr, SKColorType colorType) => colorType == SKColorType.Rgba8888 ? ptr + 2 : ptr;
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static byte* Alpha(byte* ptr, SKColorType colorType) => ptr + 3;
 
         private void ApplyBoosts(byte* output, SKImageInfo info, params BoostArea[] boostAreas)
         {
@@ -410,7 +401,7 @@ namespace Smartcrop
             {
                 for (int x = 0; x < info.Width; x++)
                 {
-                    *Alpha(output + (y * info.Width + x) * 4, info.ColorType) = 0; //alpha
+                    *Alpha(output + (y * info.Width + x) * 4, info.ColorType) = 0;
                 }
             }
 
@@ -529,7 +520,7 @@ namespace Smartcrop
             var s = 1.41f - (float)Math.Sqrt(px * px + py * py);
             if (this.Options.RuleOfThirds)
             {
-                s += Math.Max(0, s + d + 0.5f) * 1.2f * (this.Thirds(px) + this.Thirds(py));
+                s += Math.Max(0, s + d + 0.5f) * 1.2f * (Thirds(px) + Thirds(py));
             }
             return s + d;
         }
@@ -537,10 +528,19 @@ namespace Smartcrop
         // Gets value in the range of [0; 1] where 0 is the center of the pictures
         // returns weight of rule of thirds [0; 1]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private float Thirds(float x)
+        private static float Thirds(float x)
         {
             x = (((x - 1f / 3f + 1f) % 2f) * 0.5f - 0.5f) * 16;
             return Math.Max(1f - x * x, 0f);
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static byte* Red(byte* ptr, SKColorType colorType) => colorType == SKColorType.Rgba8888 ? ptr : ptr + 2;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static byte* Green(byte* ptr, SKColorType colorType) => ptr + 1;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static byte* Blue(byte* ptr, SKColorType colorType) => colorType == SKColorType.Rgba8888 ? ptr + 2 : ptr;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static byte* Alpha(byte* ptr, SKColorType colorType) => ptr + 3;
     }
 }
