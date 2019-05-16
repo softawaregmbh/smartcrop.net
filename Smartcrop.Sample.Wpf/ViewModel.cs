@@ -70,25 +70,23 @@ namespace Smartcrop.Sample.Wpf
                     this.DebugImage = this.CreateImageSource(result.DebugInfo.Output);
 
                     watch.Start();
+                    
                     // crop the image
-                    //using (var image = SKBitmap.Decode(stream))
+                    SKRect cropRect = new SKRect(result.Area.Left, result.Area.Top, result.Area.Right, result.Area.Bottom);
+                    using (SKBitmap croppedBitmap = new SKBitmap((int)cropRect.Width, (int)cropRect.Height))
+                    using (SKCanvas canvas = new SKCanvas(croppedBitmap))
                     {
-                        SKRect cropRect = new SKRect(result.Area.Left, result.Area.Top, result.Area.Right, result.Area.Bottom);
-                        using (SKBitmap croppedBitmap = new SKBitmap((int)cropRect.Width, (int)cropRect.Height))
-                        using (SKCanvas canvas = new SKCanvas(croppedBitmap))
-                        {
-                            SKRect source = new SKRect(cropRect.Left, cropRect.Top,
-                                                   cropRect.Right, cropRect.Bottom);
-                            SKRect dest = new SKRect(0, 0, cropRect.Width, cropRect.Height);
-                            canvas.DrawBitmap(bitmap, source, dest);
-                            watch.Stop();
+                        SKRect source = new SKRect(cropRect.Left, cropRect.Top,
+                                                cropRect.Right, cropRect.Bottom);
+                        SKRect dest = new SKRect(0, 0, cropRect.Width, cropRect.Height);
+                        canvas.DrawBitmap(bitmap, source, dest);
+                        watch.Stop();
 
-                            this.CroppedImage = this.CreateImageSource(croppedBitmap);
-                        };
-                    }
+                        this.CroppedImage = this.CreateImageSource(croppedBitmap);
+                    };
                 }
 
-                this.ErrorText = $"Cropping took {watch.ElapsedMilliseconds} ms";
+                this.ErrorText = null;
             }
             catch (Exception e)
             {
@@ -104,16 +102,29 @@ namespace Smartcrop.Sample.Wpf
                 image.Encode().SaveTo(stream);
                 stream.Seek(0, SeekOrigin.Begin);
 
-                var imageSource = new BitmapImage();
-                imageSource.BeginInit();
-                imageSource.CreateOptions = BitmapCreateOptions.PreservePixelFormat;
-                imageSource.CacheOption = BitmapCacheOption.OnLoad;
-                imageSource.StreamSource = stream;
-                imageSource.EndInit();
-                imageSource.Freeze();
-
-                return imageSource;
+                return this.CreateImageSource(stream);
             }
+        }
+
+        private ImageSource CreateImageSource(byte[] bytes)
+        {
+            using (var stream = new MemoryStream(bytes))
+            {
+                return this.CreateImageSource(stream);
+            }
+        }
+
+        private ImageSource CreateImageSource(Stream stream)
+        {         
+            var imageSource = new BitmapImage();
+            imageSource.BeginInit();
+            imageSource.CreateOptions = BitmapCreateOptions.PreservePixelFormat;
+            imageSource.CacheOption = BitmapCacheOption.OnLoad;
+            imageSource.StreamSource = stream;
+            imageSource.EndInit();
+            imageSource.Freeze();
+
+            return imageSource;
         }
 
         private void SelectImage()
