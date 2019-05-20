@@ -4,24 +4,18 @@ This is a .NET Standard port of Jonas Wagner's [smartcrop.js](https://github.com
 
 ## Usage
 
-Install the following nuget packages (check the "include prerelease" box):
-* Smartcrop.net
-* [SixLabors.ImageSharp](https://github.com/SixLabors/ImageSharp)
+Install the following nuget package Smartcrop.net (check the "include prerelease" box):
 
 Add the following code:
 
 ```csharp
-using (var image = Image.Load(@"path\to\image.jpg"))
+using (var image = File.OpenRead(@"path\to\image.jpg"))
 {
     // find best crop
     var result = new ImageCrop(200, 200).Crop(image);
 
     Console.WriteLine(
         $"Best crop: {result.Area.X}, {result.Area.Y} - {result.Area.Width} x {result.Area.Height}");
-
-    // crop image
-    image.Mutate(o => o.Crop(result.Area));
-    image.Save("croppedImage.jpg");
 }
 ```
 
