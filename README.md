@@ -4,7 +4,7 @@ This is a .NET Standard port of Jonas Wagner's [smartcrop.js](https://github.com
 
 ## Usage
 
-Install the following nuget package Smartcrop.net (check the "include prerelease" box):
+Install the nuget package Smartcrop.net (check the "include prerelease" box)
 
 Add the following code:
 
