@@ -14,11 +14,19 @@
     <RepositoryType>git</RepositoryType>
     <PackageTags>softaware smart image crop smartcrop</PackageTags>
     <Company>softaware gmbh</Company>
-    <Version>1.0.1-beta</Version>
+    <Version>1.0.2-beta</Version>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="SixLabors.ImageSharp" Version="1.0.0-beta0005" />
+    <PackageReference Include="SkiaSharp" Version="1.68.0" />
   </ItemGroup>
 
 </Project>
