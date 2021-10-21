@@ -4,7 +4,7 @@ This is a .NET Standard port of Jonas Wagner's [smartcrop.js](https://github.com
 
 ## Usage
 
-Install the nuget package Smartcrop.net (check the "include prerelease" box)
+Install the nuget package Smartcrop.net
 
 Add the following code:
 
@@ -19,11 +19,11 @@ using (var image = File.OpenRead(@"path\to\image.jpg"))
 }
 ```
 
-This is a very simple version, all the [options](https://github.com/jwagner/smartcrop.js#cropOptions) from the original project are also available.
+This is a very simple example, all the [options](https://github.com/jwagner/smartcrop.js#cropOptions) from the original project are also available.
 
 ### Sample
 
-There is also a [WPF sample project](https://github.com/softawaregmbh/smartcrop.net/tree/master/Smartcrop.Sample.Wpf) (but since this is a .NET Standard library, you can also use it with .NET Core):
+There is also a [WPF sample project](https://github.com/softawaregmbh/smartcrop.net/tree/master/Smartcrop.Sample.Wpf):
 
 ![Screenshot of the sample project's UI](https://github.com/softawaregmbh/smartcrop.net/raw/master/sample.png)
 Image: https://www.flickr.com/photos/endogamia/5682480447 by Leon F. Cabeiro (N. Feans), licensed under [CC-BY-2.0](https://creativecommons.org/licenses/by/2.0/)
