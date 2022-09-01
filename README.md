@@ -25,5 +25,5 @@ This is a very simple example, all the [options](https://github.com/jwagner/smar
 
 There is also a [WPF sample project](https://github.com/softawaregmbh/smartcrop.net/tree/master/Smartcrop.Sample.Wpf):
 
-![Screenshot of the sample project's UI](https://github.com/softawaregmbh/smartcrop.net/raw/master/sample.png)
+![Screenshot of the sample project's UI](https://github.com/softawaregmbh/smartcrop.net/blob/main/sample.png?raw=true)
 Image: https://www.flickr.com/photos/endogamia/5682480447 by Leon F. Cabeiro (N. Feans), licensed under [CC-BY-2.0](https://creativecommons.org/licenses/by/2.0/)
