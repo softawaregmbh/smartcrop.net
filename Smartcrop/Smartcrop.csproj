@@ -15,7 +15,8 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <PackageTags>softaware smart image crop smartcrop</PackageTags>
     <Company>softaware gmbh</Company>
-    <Version>1.0.3</Version>
+    <PackageReleaseNotes>Add github source link</PackageReleaseNotes>
+    <Version>1.0.4</Version>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
