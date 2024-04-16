@@ -1,9 +1,9 @@
-﻿using SkiaSharp;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using SkiaSharp;
 
 namespace Smartcrop
 {
